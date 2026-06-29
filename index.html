@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-select=none">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Treeforge - Create. Share. Plant Trees.</title>
   <style>
     * { box-sizing: border-box; }
@@ -10,6 +10,7 @@
       margin: 0; font-family: 'Segoe UI', Arial, sans-serif;
       background: linear-gradient(135deg, #0a0a1f 0%, #1a0033 100%);
       color: #eee; min-height: 100vh; overflow-x: hidden;
+      -webkit-user-select: none; user-select: none;
     }
     .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
     .editor-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center; z-index: 1500; padding: 16px; overflow-y: auto; }
@@ -418,7 +419,14 @@ if (target) {
   });
 
   // --- 1. SITE NAVIGATION & LOGIC ---
-  const app = window.TreeforgeApp;
+  const app = window.TreeforgeApp || {
+    getCurrentUser: () => null,
+    getCounters: () => ({ globalTrees: 14582, myTrees: 19998 }),
+    saveCounters: () => {},
+    signInUser: () => null,
+    createAuthUser: () => null,
+    clearCurrentUser: () => {}
+  };
   let isSignedIn = !!app.getCurrentUser();
   let globalTrees = 14582;
   let myTrees = 19998;
@@ -429,6 +437,9 @@ if (target) {
   }
   const authModal = document.getElementById('auth-modal');
   const authMessage = document.getElementById('auth-message');
+  const authBtn = document.getElementById('auth-btn');
+  const loginLock = document.getElementById('login-lock');
+  const autoPublishToggle = document.getElementById('auto-publish-toggle');
 
   function updateTreeCounters() {
     document.getElementById('global-trees').innerText = globalTrees.toLocaleString();
@@ -437,8 +448,9 @@ if (target) {
   }
 
   function showAuthModal() {
+    if (!authModal) return;
     authModal.style.display = 'flex';
-    authMessage.innerText = '';
+    if (authMessage) authMessage.innerText = '';
     const modalCard = authModal.querySelector('.modal-card');
     if (modalCard) {
       modalCard.style.marginTop = '0';
@@ -448,7 +460,7 @@ if (target) {
   }
 
   function hideAuthModal() {
-    authModal.style.display = 'none';
+    if (authModal) authModal.style.display = 'none';
   }
 
   function showAuthMode(mode) {
@@ -468,6 +480,7 @@ if (target) {
   function handleAuthSubmit() {
     const usernameInput = document.getElementById('auth-username');
     const passwordInput = document.getElementById('auth-password');
+    if (!usernameInput || !passwordInput || !authMessage) return;
     const username = usernameInput.value.trim();
     const password = passwordInput.value;
     if (!username || !password) {
@@ -496,46 +509,59 @@ if (target) {
   }
 
   function closeEditorModal() {
-    document.getElementById('editor-modal').style.display = 'none';
+    const editorModal = document.getElementById('editor-modal');
+    if (editorModal) editorModal.style.display = 'none';
   }
 
   function switchView(viewId) {
+    const header = document.getElementById('main-header');
+    const studioView = document.getElementById('studio-view');
+    const editorModal = document.getElementById('editor-modal');
+    const targetView = document.getElementById(viewId);
+
+    if (!header || !studioView || !targetView) return;
+
     if (viewId === 'studio-view') {
       if (!isDesktopDevice()) {
-        document.getElementById('main-header').style.display = 'flex';
-        document.getElementById('studio-view').style.display = 'none';
-        document.getElementById('editor-modal').style.display = 'flex';
+        header.style.display = 'flex';
+        studioView.style.display = 'none';
+        if (editorModal) editorModal.style.display = 'flex';
         return;
       }
       document.querySelectorAll('.view-section').forEach(el => el.style.display = 'none');
-      document.getElementById('main-header').style.display = 'none';
-      document.getElementById('studio-view').style.display = 'flex';
+      header.style.display = 'none';
+      studioView.style.display = 'flex';
       setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
       return;
     }
 
     document.querySelectorAll('.view-section').forEach(el => el.style.display = 'none');
-    document.getElementById('main-header').style.display = 'flex';
-    document.getElementById('studio-view').style.display = 'none';
-    document.getElementById(viewId).style.display = 'block';
+    header.style.display = 'flex';
+    studioView.style.display = 'none';
+    targetView.style.display = 'block';
     window.scrollTo(0, 0);
   }
 
   function toggleSignIn(forceOpen) {
-    const authBtn = document.getElementById('auth-btn');
-    const lock = document.getElementById('login-lock');
     if (forceOpen === true) {
       isSignedIn = true;
-      authBtn.innerText = 'Sign Out'; authBtn.style.background = '#334';
-      lock.style.display = 'none';
+      if (authBtn) {
+        authBtn.innerText = 'Sign Out';
+        authBtn.style.background = '#334';
+      }
+      if (loginLock) loginLock.style.display = 'none';
       showToast('Signed In Successfully!');
       return;
     }
     if (isSignedIn) {
       isSignedIn = false; app.clearCurrentUser();
-      authBtn.innerText = 'Sign In'; authBtn.style.background = '#ff8800';
-      lock.style.display = 'flex'; showToast('Signed Out.');
-      document.getElementById('auto-publish-toggle').checked = false;
+      if (authBtn) {
+        authBtn.innerText = 'Sign In';
+        authBtn.style.background = '#ff8800';
+      }
+      if (loginLock) loginLock.style.display = 'flex';
+      showToast('Signed Out.');
+      if (autoPublishToggle) autoPublishToggle.checked = false;
     } else {
       showAuthModal();
     }
@@ -574,17 +600,36 @@ if (target) {
   }
 
   function showToast(msg) {
-    const toast = document.getElementById("toast");
-    toast.innerText = msg; toast.className = "show";
-    setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+    toast.innerText = msg;
+    toast.classList.remove('show');
+    window.requestAnimationFrame(() => {
+      toast.classList.add('show');
+    });
+    clearTimeout(toast._toastTimer);
+    toast._toastTimer = setTimeout(() => {
+      toast.classList.remove('show');
+    }, 3000);
   }
 
-  document.getElementById('login-lock').style.display = isSignedIn ? 'none' : 'flex';
-  document.getElementById('auth-modal').style.display = 'none';
-  document.getElementById('auto-publish-toggle').checked = false;
-  if (isSignedIn) {
-    document.getElementById('auth-btn').innerText = 'Sign Out';
-    document.getElementById('auth-btn').style.background = '#334';
+  if (loginLock) loginLock.style.display = isSignedIn ? 'none' : 'flex';
+  if (authModal) authModal.style.display = 'none';
+  if (autoPublishToggle) autoPublishToggle.checked = false;
+  if (authModal) {
+    authModal.addEventListener('click', (event) => {
+      if (event.target === authModal) hideAuthModal();
+    });
+  }
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      hideAuthModal();
+      closeEditorModal();
+    }
+  });
+  if (isSignedIn && authBtn) {
+    authBtn.innerText = 'Sign Out';
+    authBtn.style.background = '#334';
   }
   updateTreeCounters();
 
@@ -596,11 +641,14 @@ if (target) {
   const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas'), antialias: true });
 
   function resizeCanvas() {
-    if(document.getElementById('studio-view').style.display !== 'flex') return;
+    if (!viewportDiv || !camera || !renderer) return;
+    if (document.getElementById('studio-view').style.display !== 'flex') return;
     const w = viewportDiv.clientWidth; const h = viewportDiv.clientHeight;
     camera.aspect = w / h; camera.updateProjectionMatrix(); renderer.setSize(w, h);
   }
   window.addEventListener('resize', resizeCanvas);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  resizeCanvas();
 
   const vShader = `varying vec3 vWorldPosition; void main() { vec4 wp = modelMatrix * vec4(position, 1.0); vWorldPosition = wp.xyz; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
   const fShader = `varying vec3 vWorldPosition; void main() { float h = normalize(vWorldPosition + vec3(0.0, 200.0, 0.0)).y; gl_FragColor = vec4(mix(vec3(0.6, 0.8, 1.0), vec3(0.2, 0.4, 0.8), max(0.0, h)), 1.0); }`;
