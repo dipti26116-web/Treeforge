@@ -368,7 +368,21 @@ if (target) {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
 <script>
   function isDesktopDevice() {
-    return !/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) && !/tablet|ipad/i.test(navigator.userAgent);
+    const hasTouch = navigator.maxTouchPoints > 0 || window.matchMedia('(pointer: coarse)').matches;
+    const smallViewport = window.innerWidth < 1024 || window.innerHeight < 700;
+    const mobileOrTabletUA = /Android|iPhone|iPad|iPod|Mobile|tablet|ipad/i.test(navigator.userAgent);
+    return !hasTouch && !mobileOrTabletUA && !smallViewport;
+  }
+
+  function enforceStudioAccess() {
+    const studioView = document.getElementById('studio-view');
+    const mainHeader = document.getElementById('main-header');
+    const editorModal = document.getElementById('editor-modal');
+    if (!isDesktopDevice() && studioView && studioView.style.display === 'flex') {
+      studioView.style.display = 'none';
+      if (mainHeader) mainHeader.style.display = 'flex';
+      if (editorModal) editorModal.style.display = 'flex';
+    }
   }
 
   function isPhoneOnlyPortrait() {
@@ -393,8 +407,14 @@ if (target) {
     applyPhonePortraitMode();
   });
 
-  window.addEventListener('orientationchange', applyPhonePortraitMode);
-  window.addEventListener('resize', applyPhonePortraitMode);
+  window.addEventListener('orientationchange', () => {
+    applyPhonePortraitMode();
+    enforceStudioAccess();
+  });
+  window.addEventListener('resize', () => {
+    applyPhonePortraitMode();
+    enforceStudioAccess();
+  });
 
   // --- 1. SITE NAVIGATION & LOGIC ---
   const app = window.TreeforgeApp;
@@ -483,6 +503,8 @@ if (target) {
 
     if (viewId === 'studio-view') {
       if (!isDesktopDevice()) {
+        document.getElementById('studio-view').style.display = 'none';
+        document.getElementById('main-header').style.display = 'flex';
         document.getElementById('editor-modal').style.display = 'flex';
         return;
       }
