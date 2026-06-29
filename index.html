@@ -12,6 +12,9 @@
       color: #eee; min-height: 100vh; overflow-x: hidden;
     }
     .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
+    .editor-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center; z-index: 1500; padding: 16px; }
+    .editor-modal-card { background: #141425; border: 1px solid #ff8800; border-radius: 18px; width: min(520px, 100%); padding: 24px; box-shadow: 0 24px 80px rgba(0,0,0,0.5); }
+    .editor-modal-card button { background: linear-gradient(90deg, #ff8800, #ff5d00); color: white; border: none; padding: 10px 16px; border-radius: 10px; cursor: pointer; font-weight: bold; }
     .phone-only-portrait { display: none; }
     .intro-overlay { position: fixed; inset: 0; background: #000; display: flex; align-items: center; justify-content: center; z-index: 2000; overflow: hidden; }
     .intro-overlay.hidden { opacity: 0; pointer-events: none; transition: opacity 0.6s ease; }
@@ -167,6 +170,16 @@
 </div>
 
 <div id="app-shell" class="app-shell">
+<div id="editor-modal" class="editor-modal">
+  <div class="editor-modal-card">
+    <h2 style="margin-top:0;">Editor unavailable on this device</h2>
+    <p style="line-height:1.6; color:#ddd;">You can not open the editor menu on mobile phones or tablets/iPads. If you want to start making games, download Treeforge on a computer and create your games there.</p>
+    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+      <button onclick="closeEditorModal()">Close</button>
+    </div>
+  </div>
+</div>
+
 <div id="auth-modal" class="modal">
   <div class="modal-card">
     <h2 style="margin-top:0;">Welcome back</h2>
@@ -354,6 +367,10 @@ if (target) {
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
 <script>
+  function isDesktopDevice() {
+    return !/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) && !/tablet|ipad/i.test(navigator.userAgent);
+  }
+
   function isPhoneOnlyPortrait() {
     return /Android|iPhone|iPod|Mobile/i.test(navigator.userAgent) && window.matchMedia('(orientation: portrait)').matches && window.matchMedia('(pointer: coarse)').matches && !window.matchMedia('(hover: hover)').matches;
   }
@@ -401,6 +418,12 @@ if (target) {
   function showAuthModal() {
     authModal.style.display = 'flex';
     authMessage.innerText = '';
+    const modalCard = authModal.querySelector('.modal-card');
+    if (modalCard) {
+      modalCard.style.marginTop = '0';
+      modalCard.style.maxHeight = 'calc(100vh - 32px)';
+      modalCard.style.overflowY = 'auto';
+    }
   }
 
   function hideAuthModal() {
@@ -430,14 +453,17 @@ if (target) {
       authMessage.innerText = 'Please enter both username and password.';
       return;
     }
-    const existing = app.signInUser(username, password);
+    const normalized = username.toLowerCase();
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const isEmail = emailPattern.test(username);
+    const existing = app.signInUser(isEmail ? username : normalized, password);
     if (existing) {
       isSignedIn = true;
       toggleSignIn(true);
       hideAuthModal();
       return;
     }
-    const created = app.createAuthUser({ username, password, displayName: username });
+    const created = app.createAuthUser({ username: isEmail ? username : normalized, password, displayName: isEmail ? username.split('@')[0] : normalized });
     if (created) {
       isSignedIn = true;
       toggleSignIn(true);
@@ -445,13 +471,21 @@ if (target) {
       authMessage.innerText = 'Account created successfully.';
       return;
     }
-    authMessage.innerText = 'Invalid credentials or username already exists.';
+    authMessage.innerText = 'Invalid credentials or username/email already exists.';
+  }
+
+  function closeEditorModal() {
+    document.getElementById('editor-modal').style.display = 'none';
   }
 
   function switchView(viewId) {
     document.querySelectorAll('.view-section').forEach(el => el.style.display = 'none');
 
     if (viewId === 'studio-view') {
+      if (!isDesktopDevice()) {
+        document.getElementById('editor-modal').style.display = 'flex';
+        return;
+      }
       document.getElementById('main-header').style.display = 'none';
       document.getElementById('studio-view').style.display = 'flex';
       setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
@@ -522,6 +556,7 @@ if (target) {
   }
 
   document.getElementById('login-lock').style.display = isSignedIn ? 'none' : 'flex';
+  document.getElementById('auth-modal').style.display = 'none';
   document.getElementById('auto-publish-toggle').checked = false;
   if (isSignedIn) {
     document.getElementById('auth-btn').innerText = 'Sign Out';
