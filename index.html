@@ -11,6 +11,44 @@
       background: linear-gradient(135deg, #0a0a1f 0%, #1a0033 100%);
       color: #eee; min-height: 100vh; overflow-x: hidden;
     }
+    .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
+    .phone-only-portrait { display: none; }
+    .intro-overlay { position: fixed; inset: 0; background: #000; display: flex; align-items: center; justify-content: center; z-index: 2000; overflow: hidden; }
+    .intro-overlay.hidden { opacity: 0; pointer-events: none; transition: opacity 0.6s ease; }
+    .intro-text { font-size: clamp(32px, 7vw, 72px); font-style: italic; color: #fff7e6; text-shadow: 0 0 20px rgba(255,136,0,0.5); letter-spacing: 0.08em; animation: introFade 2s ease forwards; }
+    .intro-rip { position: absolute; inset: 0; background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%); transform: translateX(-120%); animation: ripReveal 1.2s ease forwards; }
+    .app-shell { filter: blur(0px); transition: filter 1.2s ease; }
+    .app-shell.blurred { filter: blur(12px); }
+    @keyframes introFade { 0% { opacity: 0; transform: translateY(12px) scale(0.96); } 40% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-10px) scale(1.02); } }
+    @keyframes ripReveal { 0% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
+    .modal-card { background: #141425; border: 1px solid #ff8800; border-radius: 16px; width: min(480px, 100%); padding: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.45); }
+    .auth-row { display: grid; gap: 10px; margin-top: 12px; }
+    .auth-row input, .auth-row button { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #445; background: #0f1020; color: #fff; }
+    .auth-row button { background: linear-gradient(90deg, #ff8800, #ff5d00); border: none; font-weight: bold; cursor: pointer; }
+    .auth-links { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+    .auth-links button { background: transparent; border: 1px solid #445; color: #eee; padding: 8px; border-radius: 8px; cursor: pointer; }
+    @media (max-width: 700px) { .auth-links { grid-template-columns: 1fr; } }
+    @media (max-width: 900px) and (orientation: portrait) and (pointer: coarse) and (hover: none) {
+      body { font-size: 16px; }
+      #main-header { padding: 12px 14px; flex-wrap: wrap; gap: 8px; }
+      .logo { font-size: 24px; }
+      .nav-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+      .nav-buttons button { margin-left: 0; padding: 8px 10px; font-size: 13px; }
+      .hero { padding-top: 110px; padding-bottom: 44px; }
+      .hero h1 { font-size: 32px; }
+      .hero p { font-size: 16px; }
+      .section { padding: 24px 16px; flex-direction: column; gap: 20px; }
+      .feature-img { height: 220px; }
+      .overlay-text { font-size: 18px; left: 16px; bottom: 16px; }
+      .view-section { padding-top: 92px; }
+      .store-header h1 { font-size: 30px; }
+      .game-grid { grid-template-columns: 1fr; gap: 16px; }
+      .game-card { padding: 14px; }
+      .dashboard { padding: 16px; gap: 16px; }
+      .setting-row { flex-direction: column; align-items: flex-start; gap: 8px; }
+      .modal-card { padding: 18px; }
+      .phone-only-portrait { display: block; }
+    }
     
     /* --- MAIN NAVIGATION HEADER --- */
     #main-header {
@@ -118,9 +156,33 @@
     .explorer-item { padding: 8px; border-radius: 4px; cursor: pointer; font-size: 13px; margin-bottom: 4px; background: rgba(255,255,255,0.05); }
     .explorer-item.selected { background: rgba(255,136,0,0.2); color: #f80; }
   </style>
+  <script src="app-utils.js"></script>
   <script src="touchscreen.js"></script>
 </head>
 <body>
+
+<div id="intro-overlay" class="intro-overlay">
+  <div class="intro-rip"></div>
+  <div class="intro-text">Mantra's Studios</div>
+</div>
+
+<div id="app-shell" class="app-shell">
+<div id="auth-modal" class="modal">
+  <div class="modal-card">
+    <h2 style="margin-top:0;">Welcome back</h2>
+    <div class="auth-row">
+      <input id="auth-username" placeholder="Username" />
+      <input id="auth-password" type="password" placeholder="Password" />
+      <button onclick="handleAuthSubmit()">Sign In</button>
+    </div>
+    <div class="auth-links">
+      <button onclick="showAuthMode('create')">Create account</button>
+      <button onclick="showAuthMode('forgot-user')">Forgot username</button>
+      <button onclick="showAuthMode('forgot-pass')">Forgot password</button>
+    </div>
+    <p id="auth-message" style="margin-top:12px; color:#ffcc80; min-height:20px;"></p>
+  </div>
+</div>
 
 <header id="main-header">
   <div class="logo" onclick="switchView('home-view')">🌳 Treeforge</div>
@@ -292,39 +354,132 @@ if (target) {
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
 <script>
-  // --- 1. SITE NAVIGATION & LOGIC ---
-  let isSignedIn = false;
-  let globalTrees = 14582;
-  let myTrees = 19998;
+  function isPhoneOnlyPortrait() {
+    return /Android|iPhone|iPod|Mobile/i.test(navigator.userAgent) && window.matchMedia('(orientation: portrait)').matches && window.matchMedia('(pointer: coarse)').matches && !window.matchMedia('(hover: hover)').matches;
+  }
 
-  function switchView(viewId) {
-    // Hide all normal sections
-    document.querySelectorAll('.view-section').forEach(el => el.style.display = 'none');
-    
-    // Check if we are opening the studio
-    if (viewId === 'studio-view') {
-      document.getElementById('main-header').style.display = 'none'; // Hide main nav
-      document.getElementById('studio-view').style.display = 'flex'; // Show studio
-      setTimeout(resizeCanvas, 50); // Fix 3D canvas size after opening
-    } else {
-      document.getElementById('main-header').style.display = 'flex'; // Show main nav
-      document.getElementById('studio-view').style.display = 'none'; // Hide studio
-      document.getElementById(viewId).style.display = 'block';
-      window.scrollTo(0,0);
+  function applyPhonePortraitMode() {
+    const appShell = document.getElementById('app-shell');
+    if (appShell) {
+      appShell.classList.toggle('phone-portrait', isPhoneOnlyPortrait());
     }
   }
 
-  function toggleSignIn() {
-    isSignedIn = !isSignedIn;
+  window.addEventListener('load', () => {
+    const intro = document.getElementById('intro-overlay');
+    const appShell = document.getElementById('app-shell');
+    setTimeout(() => {
+      intro.classList.add('hidden');
+      appShell.classList.add('blurred');
+      setTimeout(() => appShell.classList.remove('blurred'), 1200);
+    }, 2200);
+    applyPhonePortraitMode();
+  });
+
+  window.addEventListener('orientationchange', applyPhonePortraitMode);
+  window.addEventListener('resize', applyPhonePortraitMode);
+
+  // --- 1. SITE NAVIGATION & LOGIC ---
+  const app = window.TreeforgeApp;
+  let isSignedIn = !!app.getCurrentUser();
+  let globalTrees = 14582;
+  let myTrees = 19998;
+  const savedCounters = app.getCounters();
+  if (savedCounters) {
+    globalTrees = savedCounters.globalTrees || globalTrees;
+    myTrees = savedCounters.myTrees || myTrees;
+  }
+  const authModal = document.getElementById('auth-modal');
+  const authMessage = document.getElementById('auth-message');
+
+  function updateTreeCounters() {
+    document.getElementById('global-trees').innerText = globalTrees.toLocaleString();
+    document.getElementById('my-trees').innerText = myTrees.toLocaleString();
+    app.saveCounters({ globalTrees, myTrees });
+  }
+
+  function showAuthModal() {
+    authModal.style.display = 'flex';
+    authMessage.innerText = '';
+  }
+
+  function hideAuthModal() {
+    authModal.style.display = 'none';
+  }
+
+  function showAuthMode(mode) {
+    const usernameInput = document.getElementById('auth-username');
+    const passwordInput = document.getElementById('auth-password');
+    if (mode === 'create') {
+      authMessage.innerText = 'Create a new account with any username and password.';
+      passwordInput.value = '';
+      usernameInput.focus();
+    } else if (mode === 'forgot-user') {
+      authMessage.innerText = 'If you forgot your username, use your email or creator name when you first signed up.';
+    } else {
+      authMessage.innerText = 'If you forgot your password, reset it from the creator dashboard or create a new account.';
+    }
+  }
+
+  function handleAuthSubmit() {
+    const usernameInput = document.getElementById('auth-username');
+    const passwordInput = document.getElementById('auth-password');
+    const username = usernameInput.value.trim();
+    const password = passwordInput.value;
+    if (!username || !password) {
+      authMessage.innerText = 'Please enter both username and password.';
+      return;
+    }
+    const existing = app.signInUser(username, password);
+    if (existing) {
+      isSignedIn = true;
+      toggleSignIn(true);
+      hideAuthModal();
+      return;
+    }
+    const created = app.createAuthUser({ username, password, displayName: username });
+    if (created) {
+      isSignedIn = true;
+      toggleSignIn(true);
+      hideAuthModal();
+      authMessage.innerText = 'Account created successfully.';
+      return;
+    }
+    authMessage.innerText = 'Invalid credentials or username already exists.';
+  }
+
+  function switchView(viewId) {
+    document.querySelectorAll('.view-section').forEach(el => el.style.display = 'none');
+
+    if (viewId === 'studio-view') {
+      document.getElementById('main-header').style.display = 'none';
+      document.getElementById('studio-view').style.display = 'flex';
+      setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
+    } else {
+      document.getElementById('main-header').style.display = 'flex';
+      document.getElementById('studio-view').style.display = 'none';
+      document.getElementById(viewId).style.display = 'block';
+      window.scrollTo(0, 0);
+    }
+  }
+
+  function toggleSignIn(forceOpen) {
     const authBtn = document.getElementById('auth-btn');
     const lock = document.getElementById('login-lock');
+    if (forceOpen === true) {
+      isSignedIn = true;
+      authBtn.innerText = 'Sign Out'; authBtn.style.background = '#334';
+      lock.style.display = 'none';
+      showToast('Signed In Successfully!');
+      return;
+    }
     if (isSignedIn) {
-      authBtn.innerText = "Sign Out"; authBtn.style.background = "#334";
-      lock.style.display = "none"; showToast("Signed In Successfully!");
-    } else {
-      authBtn.innerText = "Sign In"; authBtn.style.background = "#ff8800";
-      lock.style.display = "flex"; showToast("Signed Out.");
+      isSignedIn = false; app.clearCurrentUser();
+      authBtn.innerText = 'Sign In'; authBtn.style.background = '#ff8800';
+      lock.style.display = 'flex'; showToast('Signed Out.');
       document.getElementById('auto-publish-toggle').checked = false;
+    } else {
+      showAuthModal();
     }
   }
 
@@ -337,15 +492,15 @@ if (target) {
 
   function playOtherGame() {
     globalTrees++;
-    document.getElementById('global-trees').innerText = globalTrees.toLocaleString();
-    showToast("▶ Game Started! Creator earned 1 Tree! 🌳");
+    updateTreeCounters();
+    showToast('▶ Game Started! Creator earned 1 Tree! 🌳');
   }
 
   function simulatePlayerJoiningMyGame() {
     myTrees++;
-    document.getElementById('my-trees').innerText = myTrees.toLocaleString();
-    document.getElementById('forest-visual').innerText += "🌲";
-    showToast("Someone played your game! +1 Tree! 🌳");
+    updateTreeCounters();
+    document.getElementById('forest-visual').innerText += '🌲';
+    showToast('Someone played your game! +1 Tree! 🌳');
     checkPublishLimit();
   }
 
@@ -366,8 +521,13 @@ if (target) {
     setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
   }
 
-  document.getElementById('login-lock').style.display = "flex";
+  document.getElementById('login-lock').style.display = isSignedIn ? 'none' : 'flex';
   document.getElementById('auto-publish-toggle').checked = false;
+  if (isSignedIn) {
+    document.getElementById('auth-btn').innerText = 'Sign Out';
+    document.getElementById('auth-btn').style.background = '#334';
+  }
+  updateTreeCounters();
 
   // --- 2. THREE.JS STUDIO ENGINE ---
   const scene = new THREE.Scene();
