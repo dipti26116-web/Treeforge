@@ -368,10 +368,11 @@ if (target) {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
 <script>
   function isDesktopDevice() {
+    const ua = navigator.userAgent || '';
     const hasTouch = navigator.maxTouchPoints > 0 || window.matchMedia('(pointer: coarse)').matches;
-    const smallViewport = window.innerWidth < 1024 || window.innerHeight < 700;
-    const mobileOrTabletUA = /Android|iPhone|iPad|iPod|Mobile|tablet|ipad/i.test(navigator.userAgent);
-    return !hasTouch && !mobileOrTabletUA && !smallViewport;
+    const mobileOrTabletUA = /(android|iphone|ipad|ipod|mobile|tablet)/i.test(ua);
+    const smallTouchViewport = hasTouch && window.innerWidth <= 1366 && window.innerHeight <= 1024;
+    return !mobileOrTabletUA && !smallTouchViewport;
   }
 
   function enforceStudioAccess() {
