@@ -31,8 +31,12 @@
     .panel { background: #1a1a26; border-right: 1px solid #2d2d3d; display: flex; flex-direction: column; z-index: 2; }
     #explorer-panel { width: 220px; padding: 10px; }
     
-    #viewport { background: #000; position: relative; flex: 1; height: 100%; }
+    #viewport { background: #000; position: relative; flex: 1; height: 100%; overflow: hidden; }
     #canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: block; }
+    .editor-toolbar { display: flex; gap: 8px; flex-wrap: wrap; }
+    .editor-toolbar button { padding: 8px 10px; border-radius: 8px; border: 1px solid #445; background: #212132; color: #fff; cursor: pointer; }
+    .instructions { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.75); color: #fff; padding: 10px 16px; border-radius: 999px; z-index: 30; opacity: 0; transition: opacity 0.4s ease; pointer-events: none; }
+    .instructions.show { opacity: 1; }
     
     #right-panel { width: 320px; display: flex; flex-direction: column; background: #161622; border-left: 1px solid #2d2d3d; z-index: 2; }
     .panel-tabs { display: flex; background: #1f1f2f; }
@@ -65,6 +69,7 @@
 </head>
 <body>
 
+<div id="toast" style="visibility:hidden; position:fixed; left:50%; bottom:20px; transform:translateX(-50%); background:#00cc66; color:#fff; padding:12px 16px; border-radius:999px; z-index:50;">Saved</div>
 <div id="topbar">
   <div class="ribbon-meta">
     <div>🌳 <strong>Treeforge Studio</strong></div>
@@ -77,6 +82,8 @@
     <button class="tool-btn" id="tool-anchor" onclick="toggleAnchor()">⚓ Anchor: ON</button>
     <button class="tool-btn" style="background:#242;" onclick="spawnPart()">➕ Add Part</button>
     <button class="tool-btn danger" onclick="deleteSelected()">🗑️ Del</button>
+    <button class="tool-btn" onclick="saveCurrentProject()">💾 Save</button>
+    <button class="tool-btn" onclick="publishCurrentGame()">📦 Publish</button>
     <button class="tool-btn" id="btn-play" style="background:#063; margin-left:auto;" onclick="togglePlayTest()">▶ Play Test</button>
   </div>
 </div>
@@ -89,6 +96,7 @@
   </div>
 
   <div id="viewport">
+    <div id="instruction-overlay" class="instructions show">Touch and drag to look around. Pinch to zoom. Tap controls to move.</div>
     <canvas id="canvas"></canvas>
     
     <div class="mobile-controls">
@@ -140,9 +148,13 @@ if (target) {
   </div>
 </div>
 
+<script src="app-utils.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
 <script src="touchscreen.js"></script>
 <script>
+  const app = window.TreeforgeApp;
+  const savedProject = app.getSavedProject();
+
   // --- 3D Scene Initialization ---
   const scene = new THREE.Scene();
   scene.fog = new THREE.FogExp2(0xaaccff, 0.015);
@@ -194,6 +206,9 @@ if (target) {
 
   // --- Editor State ---
   let activeTool = 'select';
+  let pinchDistance = null;
+  let isTouchDragging = false;
+  let lastTouch = null;
   let isAnchoredDefault = true;
   let selectedPartId = null;
   let partCount = 0;
@@ -205,6 +220,44 @@ if (target) {
   const speed = 0.4;
 
   // --- Engine Functions ---
+  function saveCurrentProject() {
+    const project = {
+      name: savedProject.name || 'My Game',
+      code: document.getElementById('code').value,
+      parts: partsArray.map((mesh) => ({ id: mesh.userData.id, position: mesh.position.toArray(), color: mesh.material.color.getHexString(), anchored: mesh.userData.anchored }))
+    };
+    app.saveProject(project);
+    showToast('Game saved locally.');
+  }
+
+  function publishCurrentGame() {
+    const project = {
+      id: Date.now(),
+      title: savedProject.name || 'My Game',
+      creator: app.getCurrentUser() ? app.getCurrentUser().displayName : 'Guest Creator',
+      image: 'https://picsum.photos/id/42/400/200',
+      trees: 1,
+      code: document.getElementById('code').value,
+      createdAt: new Date().toISOString()
+    };
+    app.addPublishedGame(project);
+    app.addServer({
+      id: project.id,
+      name: project.title,
+      description: 'Live multiplayer server for this published game',
+      joinCode: `TREE-${project.id.toString().slice(-4)}`
+    });
+    showToast('Game published to ForgeDownloads!');
+    window.location.href = 'download.html';
+  }
+
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+    toast.innerText = msg; toast.className = 'show';
+    setTimeout(() => { toast.className = toast.className.replace('show', ''); }, 3000);
+  }
+
   function spawnPart() {
     partCount++;
     const id = `Part_${partCount}`;
@@ -334,6 +387,45 @@ if (target) {
   });
   viewportDiv.addEventListener('contextmenu', e => e.preventDefault());
 
+  function handleTouchStart(event) {
+    if (event.touches.length === 2) {
+      pinchDistance = Math.hypot(event.touches[0].clientX - event.touches[1].clientX, event.touches[0].clientY - event.touches[1].clientY);
+      return;
+    }
+    isTouchDragging = true;
+    lastTouch = { x: event.touches[0].clientX, y: event.touches[0].clientY };
+  }
+
+  function handleTouchMove(event) {
+    if (event.touches.length === 2 && pinchDistance) {
+      const currentDistance = Math.hypot(event.touches[0].clientX - event.touches[1].clientX, event.touches[0].clientY - event.touches[1].clientY);
+      const delta = currentDistance - pinchDistance;
+      camera.position.z += delta * 0.01;
+      camera.position.z = Math.max(4, Math.min(30, camera.position.z));
+      pinchDistance = currentDistance;
+      return;
+    }
+    if (!isTouchDragging || !lastTouch) return;
+    const touch = event.touches[0];
+    const dx = touch.clientX - lastTouch.x;
+    const dy = touch.clientY - lastTouch.y;
+    yaw -= dx * 0.005;
+    pitch -= dy * 0.005;
+    pitch = Math.max(-1.5, Math.min(1.5, pitch));
+    lastTouch = { x: touch.clientX, y: touch.clientY };
+  }
+
+  function handleTouchEnd() {
+    pinchDistance = null;
+    isTouchDragging = false;
+    lastTouch = null;
+  }
+
+  viewportDiv.addEventListener('touchstart', handleTouchStart, { passive: true });
+  viewportDiv.addEventListener('touchmove', handleTouchMove, { passive: true });
+  viewportDiv.addEventListener('touchend', handleTouchEnd);
+  viewportDiv.addEventListener('touchcancel', handleTouchEnd);
+
   // --- Physics & Render Loop ---
   function animate() {
     requestAnimationFrame(animate);
@@ -394,6 +486,14 @@ if (target) {
     camera.rotation.set(pitch, yaw, 0);
     renderer.render(scene, camera);
   }
+
+  setTimeout(() => {
+    const overlay = document.getElementById('instruction-overlay');
+    if (overlay) {
+      overlay.classList.remove('show');
+      setTimeout(() => overlay.remove(), 1800);
+    }
+  }, 2000);
 
   resizeCanvas();
   animate();
