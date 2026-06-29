@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ForgeDownloads - Treeforge</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #0a0a1f 0%, #1a0033 100%);
+      color: #eee;
+      min-height: 100vh;
+    }
+    
+    /* Header */
+    header {
+      position: fixed;
+      top: 0;
+      width: 100%;
+      background: rgba(10, 10, 31, 0.97);
+      backdrop-filter: blur(12px);
+      padding: 18px 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 100;
+      border-bottom: 1px solid #ff550044;
+    }
+    .logo { font-size: 30px; font-weight: bold; color: #ff8800; cursor: pointer; }
+    .nav-buttons button {
+      padding: 10px 20px;
+      margin-left: 10px;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      background: #1f1f2f;
+      color: white;
+      border: 1px solid #445;
+      transition: 0.2s;
+    }
+    .nav-buttons button:hover { background: #334; border-color: #ff8800; }
+    
+    /* Main Content */
+    .container {
+      padding: 120px 40px 60px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .store-header { text-align: center; margin-bottom: 50px; }
+    .store-header h1 {
+      font-size: 48px;
+      margin: 0 0 10px 0;
+      background: linear-gradient(90deg, #ffcc00, #ff5500);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .tree-counter {
+      display: inline-block;
+      background: rgba(0, 255, 100, 0.1);
+      border: 2px solid #00cc66;
+      color: #00ff88;
+      padding: 10px 20px;
+      border-radius: 50px;
+      font-size: 20px;
+      font-weight: bold;
+      margin-top: 15px;
+      box-shadow: 0 0 15px rgba(0, 255, 100, 0.2);
+    }
+    
+    /* Game Grid */
+    .game-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 30px;
+      margin-bottom: 60px;
+    }
+    .game-card {
+      background: rgba(25, 25, 45, 0.8);
+      border: 1px solid #334;
+      border-radius: 16px;
+      padding: 20px;
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+    .game-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px rgba(255, 136, 0, 0.2);
+      border-color: #ff8800;
+    }
+    .game-img {
+      width: 100%;
+      height: 160px;
+      background-color: #111;
+      border-radius: 10px;
+      margin-bottom: 15px;
+      background-size: cover;
+      background-position: center;
+    }
+    .game-title { font-size: 24px; font-weight: bold; margin: 0 0 5px 0; }
+    .game-creator { font-size: 14px; color: #aaa; margin: 0 0 15px 0; }
+    .game-stats {
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+      margin-bottom: 20px;
+      color: #ddd;
+    }
+    .download-btn {
+      width: 100%;
+      background: linear-gradient(90deg, #ff8800, #ff5500);
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+    }
+    .download-btn:hover { background: linear-gradient(90deg, #ff9933, #ff6600); }
+    
+    /* Progress Dashboard */
+    .dashboard {
+      background: #111122;
+      border: 2px solid #334;
+      border-radius: 16px;
+      padding: 30px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 40px;
+    }
+    .dash-section { flex: 1; min-width: 300px; }
+    .dash-section h2 { margin-top: 0; color: #ffaa00; border-bottom: 1px solid #334; padding-bottom: 10px; }
+    
+    .forest-display {
+      font-size: 40px;
+      background: #0a0a15;
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid #223;
+      margin-top: 15px;
+      text-align: center;
+    }
+    
+    /* Settings & Toggle Switch */
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #1a1a2e;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      border: 1px solid #223;
+    }
+    .setting-input {
+      background: #0a0a1f;
+      color: #00ff88;
+      border: 1px solid #445;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: bold;
+      width: 120px;
+      text-align: center;
+    }
+    
+    /* Custom Toggle Switch */
+    .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #445; transition: .4s; border-radius: 34px; }
+    .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+    input:checked + .slider { background-color: #00cc66; }
+    input:checked + .slider:before { transform: translateX(24px); }
+
+    /* Toast Notification */
+    #toast {
+      visibility: hidden;
+      min-width: 250px;
+      background-color: #00cc66;
+      color: #fff;
+      text-align: center;
+      border-radius: 8px;
+      padding: 16px;
+      position: fixed;
+      z-index: 1000;
+      left: 50%;
+      bottom: 30px;
+      transform: translateX(-50%);
+      font-size: 18px;
+      font-weight: bold;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+    }
+    #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
+    @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
+    @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo" onclick="window.location.href='index.html'">🌳 Treeforge</div>
+  <div class="nav-buttons">
+    <button onclick="window.location.href='index.html'">Home</button>
+    <button onclick="window.location.href='editor.html'" style="border-color: #ff8800; color: #ff8800;">Open Studio</button>
+  </div>
+</header>
+
+<div class="container">
+  <div class="store-header">
+    <h1>ForgeDownloads</h1>
+    <p style="font-size: 20px; color: #ccc;">Discover amazing games. Plant real trees.</p>
+    <div class="tree-counter">
+      🌳 Global Trees Planted: <span id="global-trees">14,582</span>
+    </div>
+  </div>
+
+  <!-- Game Grid -->
+  <div class="game-grid">
+    <!-- Game 1 -->
+    <div class="game-card">
+      <div class="game-img" style="background-image: url('https://picsum.photos/id/175/400/200');"></div>
+      <h3 class="game-title">Time Machine Escape</h3>
+      <p class="game-creator">By OrangeDev</p>
+      <div class="game-stats">
+        <span>⭐ 4.9 (1.2k)</span>
+        <span>🌳 5,420 Trees</span>
+      </div>
+      <button class="download-btn" onclick="downloadGame('Time Machine Escape')">📥 Download & Plant 1 Tree</button>
+    </div>
+
+    <!-- Game 2 -->
+    <div class="game-card">
+      <div class="game-img" style="background-image: url('https://picsum.photos/id/28/400/200');"></div>
+      <h3 class="game-title">World Map Explorer</h3>
+      <p class="game-creator">By Yathu_Builds</p>
+      <div class="game-stats">
+        <span>⭐ 4.8 (850)</span>
+        <span>🌳 2,105 Trees</span>
+      </div>
+      <button class="download-btn" onclick="downloadGame('World Map Explorer')">📥 Download & Plant 1 Tree</button>
+    </div>
+
+    <!-- Game 3 -->
+    <div class="game-card">
+      <div class="game-img" style="background-image: url('https://picsum.photos/id/192/400/200');"></div>
+      <h3 class="game-title">Texas Math Quest</h3>
+      <p class="game-creator">By Shivansh_Genius</p>
+      <div class="game-stats">
+        <span>⭐ 5.0 (3.4k)</span>
+        <span>🌳 7,057 Trees</span>
+      </div>
+      <button class="download-btn" onclick="downloadGame('Texas Math Quest')">📥 Download & Plant 1 Tree</button>
+    </div>
+  </div>
+
+  <!-- Creator Dashboard (Forest & Auto-Publish) -->
+  <div class="dashboard">
+    <div class="dash-section">
+      <h2>🌲 Your Forest Progress</h2>
+      <p>Trees grown from players downloading your games:</p>
+      <div style="font-size: 24px; font-weight: bold; color: #00ff88;">
+        Total Trees: <span id="my-trees">19,998</span>
+      </div>
+      <div class="forest-display" id="forest-visual">
+        🌲🌲🌲🌳🌲🌳🌲🌳
+      </div>
+      <p style="font-size: 13px; color: #aaa;">You earn 1 ForgeCoin for every tree your game plants!</p>
+    </div>
+
+    <div class="dash-section">
+      <h2>🚀 Auto-Publish Settings</h2>
+      <p>When your game becomes popular, Treeforge can automatically package and publish it to the Google Play Store and Microsoft Store!</p>
+      
+      <div class="setting-row">
+        <div>
+          <strong>Enable Auto-Publish</strong><br>
+          <span style="font-size:12px; color:#aaa;">Requires connected Google/Microsoft dev accounts</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="auto-publish-toggle" checked onchange="saveSettings()">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="setting-row">
+        <div>
+          <strong>Upload when amount:</strong><br>
+          <span style="font-size:12px; color:#aaa;">Trees needed to trigger publish</span>
+        </div>
+        <div>
+          <input type="number" id="publish-amount" class="setting-input" value="20000" onchange="saveSettings()">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast">🌳 1 Tree Planted! Game downloading...</div>
+
+<script>
+  let globalTrees = 14582;
+  let myTrees = 19998; // So close to the 20k publish limit!
+
+  function downloadGame(gameName) {
+    // Increment counters
+    globalTrees++;
+    myTrees++;
+    
+    document.getElementById('global-trees').innerText = globalTrees.toLocaleString();
+    document.getElementById('my-trees').innerText = myTrees.toLocaleString();
+
+    // Add a tree to the visual forest
+    const forest = document.getElementById('forest-visual');
+    forest.innerText += "🌲";
+    
+    // Show Toast
+    const toast = document.getElementById("toast");
+    toast.innerText = `🌳 1 Tree Planted! Downloading ${gameName}...`;
+    toast.className = "show";
+    setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
+
+    // Check Auto-Publish Limit
+    checkAutoPublish();
+  }
+
+  function saveSettings() {
+    const isEnabled = document.getElementById('auto-publish-toggle').checked;
+    const amount = document.getElementById('publish-amount').value;
+    console.log(`Settings Saved: Auto-Publish is ${isEnabled ? 'ON' : 'OFF'} at ${amount} trees.`);
+    checkAutoPublish();
+  }
+
+  function checkAutoPublish() {
+    const isEnabled = document.getElementById('auto-publish-toggle').checked;
+    const amount = parseInt(document.getElementById('publish-amount').value);
+
+    if (isEnabled && myTrees >= amount) {
+      setTimeout(() => {
+        alert(`🎉 CONGRATULATIONS! 🎉\n\nYour forest reached ${amount} trees!\nTreeforge is now packaging your game and sending it to the Google Play Store and Microsoft Store!`);
+      }, 1000); // Small delay so the user sees the tree count go up first
+    }
+  }
+</script>
+
+</body>
+</html>

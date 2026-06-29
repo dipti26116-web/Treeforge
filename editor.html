@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-select=none">
+  <title>Treeforge Studio</title>
+  <style>
+    * { box-sizing: border-box; touch-action: none; }
+    body { 
+      margin: 0; overflow: hidden; background: #111; 
+      font-family: 'Segoe UI', Arial, sans-serif; color: white; user-select: none;
+    }
+    
+    /* Ribbon Interface */
+    #topbar { 
+      background: #1f1f2f; padding: 10px; display: flex; flex-direction: column;
+      border-bottom: 2px solid #334; height: 90px;
+    }
+    .ribbon-meta { display: flex; justify-content: space-between; font-size: 14px; opacity: 0.9; }
+    .ribbon-tools { display: flex; gap: 8px; margin-top: 8px; overflow-x: auto; padding-bottom: 5px; }
+    .tool-btn {
+      background: #2a2a3a; color: white; border: 1px solid #445; padding: 6px 12px;
+      border-radius: 6px; cursor: pointer; font-weight: bold; white-space: nowrap;
+    }
+    .tool-btn:hover { background: #3a3a52; border-color: #f80; }
+    .tool-btn.active { background: #f80; border-color: #fa0; }
+    .tool-btn.danger { background: #522; }
+    
+    /* Layout */
+    .studio-container { display: flex; height: calc(100vh - 90px); width: 100vw; position: relative; }
+    .panel { background: #1a1a26; border-right: 1px solid #2d2d3d; display: flex; flex-direction: column; z-index: 2; }
+    #explorer-panel { width: 220px; padding: 10px; }
+    
+    #viewport { background: #000; position: relative; flex: 1; height: 100%; }
+    #canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: block; }
+    
+    #right-panel { width: 320px; display: flex; flex-direction: column; background: #161622; border-left: 1px solid #2d2d3d; z-index: 2; }
+    .panel-tabs { display: flex; background: #1f1f2f; }
+    .tab { flex: 1; padding: 10px; text-align: center; cursor: pointer; background: #1a1a26; font-size: 13px; opacity: 0.7; }
+    .tab.active { opacity: 1; background: #161622; font-weight: bold; border-bottom: 2px solid #f80; }
+    .tab-content { flex: 1; padding: 15px; overflow-y: auto; display: none; }
+    .tab-content.active { display: block; }
+    
+    /* Color Palette */
+    .color-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .color-swatch { height: 35px; border-radius: 6px; cursor: pointer; border: 2px solid transparent; }
+    .color-swatch.selected { border-color: white; }
+    
+    /* Code Editor & Explorer */
+    #code { width: 100%; height: 250px; background: #111; color: #0f0; border: 1px solid #334; font-family: monospace; padding: 10px; resize: none; }
+    .explorer-list { list-style: none; padding-left: 5px; margin: 10px 0; }
+    .explorer-item { padding: 8px; border-radius: 4px; cursor: pointer; font-size: 13px; margin-bottom: 4px; background: rgba(255,255,255,0.05); }
+    .explorer-item.selected { background: rgba(255,136,0,0.2); color: #f80; }
+
+    /* Mobile Controls (Hidden on PC by default) */
+    .mobile-controls { display: none; position: absolute; bottom: 20px; left: 20px; z-index: 10; gap: 5px; }
+    .m-btn { width: 50px; height: 50px; background: rgba(0,0,0,0.5); border: 2px solid #f80; color: white; border-radius: 8px; font-weight: bold; }
+    
+    @media (max-width: 800px) {
+      #explorer-panel { width: 140px; }
+      #right-panel { width: 220px; }
+      .mobile-controls { display: flex; flex-wrap: wrap; width: 160px; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="ribbon-meta">
+    <div>🌳 <strong>Treeforge Studio</strong></div>
+    <div><button class="tool-btn" onclick="window.location.href='index.html'">Exit</button></div>
+  </div>
+  <div class="ribbon-tools">
+    <button class="tool-btn active" id="tool-select" onclick="setTool('select')">🖐️ Select</button>
+    <button class="tool-btn" id="tool-drag" onclick="setTool('drag')">🎯 Drag</button>
+    <button class="tool-btn" id="tool-rotate" onclick="setTool('rotate')">🔄 Rotate</button>
+    <button class="tool-btn" id="tool-anchor" onclick="toggleAnchor()">⚓ Anchor: ON</button>
+    <button class="tool-btn" style="background:#242;" onclick="spawnPart()">➕ Add Part</button>
+    <button class="tool-btn danger" onclick="deleteSelected()">🗑️ Del</button>
+    <button class="tool-btn" id="btn-play" style="background:#063; margin-left:auto;" onclick="togglePlayTest()">▶ Play Test</button>
+  </div>
+</div>
+
+<div class="studio-container">
+  <div class="panel" id="explorer-panel">
+    <h4 style="margin:0 0 10px 0; border-bottom:1px solid #445; padding-bottom:5px;">Explorer</h4>
+    <div class="explorer-item" style="font-weight:bold;">📁 Workspace</div>
+    <ul class="explorer-list" id="explorer-tree"></ul>
+  </div>
+
+  <div id="viewport">
+    <canvas id="canvas"></canvas>
+    
+    <div class="mobile-controls">
+      <button class="m-btn" onpointerdown="move.f=true" onpointerup="move.f=false">W</button>
+      <button class="m-btn" onpointerdown="move.l=true" onpointerup="move.l=false">A</button>
+      <button class="m-btn" onpointerdown="move.b=true" onpointerup="move.b=false">S</button>
+      <button class="m-btn" onpointerdown="move.r=true" onpointerup="move.r=false">D</button>
+      <button class="m-btn" onpointerdown="move.up=true" onpointerup="move.up=false">UP</button>
+    </div>
+  </div>
+
+  <div id="right-panel">
+    <div class="panel-tabs">
+      <div class="tab active" id="tab-properties" onclick="switchTab('properties')">🎨 Paint</div>
+      <div class="tab" id="tab-lua" onclick="switchTab('lua')">📜 Script</div>
+    </div>
+    
+    <div class="tab-content active" id="content-properties">
+      <h4 style="margin-top:0;">Color Palette</h4>
+      <div class="color-grid">
+        <div class="color-swatch" style="background:#ff3333;" onclick="paintPart('#ff3333')"></div>
+        <div class="color-swatch" style="background:#33ff33;" onclick="paintPart('#33ff33')"></div>
+        <div class="color-swatch" style="background:#3333ff;" onclick="paintPart('#3333ff')"></div>
+        <div class="color-swatch" style="background:#ffff33;" onclick="paintPart('#ffff33')"></div>
+        <div class="color-swatch" style="background:#ff8800;" onclick="paintPart('#ff8800')"></div>
+        <div class="color-swatch" style="background:#ffffff;" onclick="paintPart('#ffffff')"></div>
+        <div class="color-swatch" style="background:#555555;" onclick="paintPart('#555555')"></div>
+        <div class="color-swatch" style="background:#8b5a2b;" onclick="paintPart('#8b5a2b')"></div>
+      </div>
+    </div>
+    
+    <div class="tab-content" id="content-lua">
+      <h4 style="margin-top:0;">Editor.lua</h4>
+      <textarea id="code">
+// Treeforge Script API
+let target = Game.Workspace.getPart("Part_1");
+
+if (target) {
+  target.setColor("#ff0000");
+  target.setPosition(0, 15, 0);
+  target.setAnchor(true);
+  alert("Part_1 Hacked!");
+} else {
+  alert("Spawn Part_1 first!");
+}
+      </textarea>
+      <button class="tool-btn" style="width:100%; margin-top:10px; justify-content:center;" onclick="executeLuaConfig()">Run Script</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+<script src="touchscreen.js"></script>
+<script>
+  // --- 3D Scene Initialization ---
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0xaaccff, 0.015);
+
+  const viewportDiv = document.getElementById('viewport');
+  const camera = new THREE.PerspectiveCamera(70, 1, 0.1, 1000);
+  const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas'), antialias: true });
+
+  function resizeCanvas() {
+    const w = viewportDiv.clientWidth;
+    const h = viewportDiv.clientHeight;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+  }
+  window.addEventListener('resize', resizeCanvas);
+
+  // --- Skybox & Lighting ---
+  const vShader = `varying vec3 vWorldPosition; void main() { vec4 wp = modelMatrix * vec4(position, 1.0); vWorldPosition = wp.xyz; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
+  const fShader = `varying vec3 vWorldPosition; void main() { float h = normalize(vWorldPosition + vec3(0.0, 200.0, 0.0)).y; gl_FragColor = vec4(mix(vec3(0.6, 0.8, 1.0), vec3(0.2, 0.4, 0.8), max(0.0, h)), 1.0); }`;
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(400, 32, 15), new THREE.ShaderMaterial({ vertexShader: vShader, fragmentShader: fShader, side: THREE.BackSide }));
+  scene.add(sky);
+
+  scene.add(new THREE.AmbientLight(0x777777));
+  const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+  dirLight.position.set(30, 60, 20);
+  scene.add(dirLight);
+
+  // --- Map Base ---
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), new THREE.MeshPhongMaterial({ color: 0x3d663d }));
+  floor.rotation.x = -Math.PI / 2;
+  scene.add(floor);
+
+  const spawnPad = new THREE.Mesh(new THREE.BoxGeometry(6, 1, 6), new THREE.MeshPhongMaterial({ color: 0xff6600 }));
+  spawnPad.position.set(0, 0.5, 0);
+  scene.add(spawnPad);
+
+  // --- Stickman Tree Character ---
+  const player = new THREE.Group();
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 2), new THREE.MeshPhongMaterial({color: 0x5a3d28}));
+  trunk.position.y = 1;
+  const leaves = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 16), new THREE.MeshPhongMaterial({color: 0x228b22}));
+  leaves.position.y = 2.5;
+  player.add(trunk, leaves);
+  scene.add(player);
+  player.visible = false; 
+
+  camera.position.set(0, 8, 15);
+
+  // --- Editor State ---
+  let activeTool = 'select';
+  let isAnchoredDefault = true;
+  let selectedPartId = null;
+  let partCount = 0;
+  let isTestingMode = false;
+  const partsArray = [];
+
+  let yaw = 0, pitch = 0, isLocked = false;
+  const move = { f: false, b: false, l: false, r: false, up: false, down: false };
+  const speed = 0.4;
+
+  // --- Engine Functions ---
+  function spawnPart() {
+    partCount++;
+    const id = `Part_${partCount}`;
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(3, 3, 3), new THREE.MeshPhongMaterial({ color: 0xdddddd }));
+    
+    mesh.position.set((Math.random() - 0.5) * 15, 10, (Math.random() - 0.5) * 15);
+    mesh.userData = { id: id, anchored: isAnchoredDefault, startY: 10 };
+    
+    scene.add(mesh);
+    partsArray.push(mesh);
+
+    document.getElementById('explorer-tree').innerHTML += `<li class="explorer-item" id="exp-${id}" onclick="selectPart('${id}')">📦 ${id}</li>`;
+    selectPart(id);
+  }
+
+  function selectPart(id) {
+    selectedPartId = id;
+    document.querySelectorAll('.explorer-item').forEach(el => el.classList.remove('selected'));
+    const item = document.getElementById(`exp-${id}`);
+    if (item) item.classList.add('selected');
+  }
+
+  function setTool(tool) {
+    activeTool = tool;
+    document.querySelectorAll('.tool-btn').forEach(b => { if(b.id && b.id.startsWith('tool-')) b.classList.remove('active'); });
+    document.getElementById(`tool-${tool}`).classList.add('active');
+  }
+
+  function toggleAnchor() {
+    isAnchoredDefault = !isAnchoredDefault;
+    document.getElementById('tool-anchor').innerText = `⚓ Anchor: ${isAnchoredDefault ? 'ON' : 'OFF'}`;
+    if (selectedPartId) {
+      const p = partsArray.find(m => m.userData.id === selectedPartId);
+      if (p) p.userData.anchored = isAnchoredDefault;
+    }
+  }
+
+  function paintPart(hex) {
+    if (!selectedPartId) return;
+    const target = partsArray.find(m => m.userData.id === selectedPartId);
+    if (target) target.material.color.set(hex);
+  }
+
+  function deleteSelected() {
+    if (!selectedPartId) return;
+    const idx = partsArray.findIndex(m => m.userData.id === selectedPartId);
+    if (idx !== -1) {
+      scene.remove(partsArray[idx]);
+      partsArray.splice(idx, 1);
+      document.getElementById(`exp-${selectedPartId}`).remove();
+      selectedPartId = null;
+    }
+  }
+
+  function togglePlayTest() {
+    isTestingMode = !isTestingMode;
+    const btn = document.getElementById('btn-play');
+    
+    if (isTestingMode) {
+      btn.innerText = "⏹ Stop Test";
+      btn.style.background = "#900";
+      player.position.set(0, 1, 0);
+      player.visible = true;
+      camera.position.set(0, 6, 12);
+      yaw = 0; pitch = -0.2;
+    } else {
+      btn.innerText = "▶ Play Test";
+      btn.style.background = "#063";
+      player.visible = false;
+      partsArray.forEach(p => { if (!p.userData.anchored) p.position.y = p.userData.startY; });
+      camera.position.set(0, 8, 15);
+      yaw = 0; pitch = 0;
+    }
+  }
+
+  // --- The Lua Script Bridge ---
+  function executeLuaConfig() {
+    const scriptText = document.getElementById('code').value;
+    const Game = {
+      Workspace: {
+        getPart: function(id) {
+          const mesh = partsArray.find(m => m.userData.id === id);
+          if (!mesh) return null;
+          return {
+            setColor: function(hex) { mesh.material.color.set(hex); },
+            setPosition: function(x, y, z) { mesh.position.set(x, y, z); },
+            setAnchor: function(isAnch) { mesh.userData.anchored = isAnch; },
+            moveUp: function(amt) { mesh.position.y += amt; }
+          };
+        }
+      }
+    };
+    try { eval(scriptText); } catch (e) { alert("Script Error: " + e.message); }
+  }
+
+  // --- Controls ---
+  document.addEventListener('keydown', e => {
+    switch(e.key.toLowerCase()) {
+      case 'w': move.f = true; break;
+      case 's': move.b = true; break;
+      case 'a': move.l = true; break;
+      case 'd': move.r = true; break;
+      case 'e': move.up = true; break;
+      case 'q': move.down = true; break;
+    }
+  });
+  document.addEventListener('keyup', e => {
+    switch(e.key.toLowerCase()) {
+      case 'w': move.f = false; break;
+      case 's': move.b = false; break;
+      case 'a': move.l = false; break;
+      case 'd': move.r = false; break;
+      case 'e': move.up = false; break;
+      case 'q': move.down = false; break;
+    }
+  });
+
+  viewportDiv.addEventListener('mousedown', e => { if (e.button === 2) viewportDiv.requestPointerLock(); });
+  document.addEventListener('mouseup', e => { if (e.button === 2 && document.pointerLockElement === viewportDiv) document.exitPointerLock(); });
+  document.addEventListener('pointerlockchange', () => { isLocked = document.pointerLockElement === viewportDiv; });
+
+  document.addEventListener('mousemove', e => {
+    if (!isLocked) return;
+    yaw -= e.movementX * 0.003;
+    pitch -= e.movementY * 0.003;
+    pitch = Math.max(-1.5, Math.min(1.5, pitch));
+  });
+  viewportDiv.addEventListener('contextmenu', e => e.preventDefault());
+
+  // --- Physics & Render Loop ---
+  function animate() {
+    requestAnimationFrame(animate);
+
+    if (window.TouchControls && typeof window.TouchControls.applyToEngine === 'function') {
+      window.TouchControls.applyToEngine(move);
+    }
+
+    const dir = new THREE.Vector3();
+    camera.getWorldDirection(dir);
+    const right = new THREE.Vector3().crossVectors(dir, camera.up).normalize();
+
+    if (!isTestingMode) {
+      if (move.f) camera.position.addScaledVector(dir, speed);
+      if (move.b) camera.position.addScaledVector(dir, -speed);
+      if (move.l) camera.position.addScaledVector(right, -speed);
+      if (move.r) camera.position.addScaledVector(right, speed);
+      if (move.up) camera.position.y += speed;
+      if (move.down) camera.position.y -= speed;
+      if (camera.position.y < 0.8) camera.position.y = 0.8; // Floor collision
+    } else {
+      const pForward = new THREE.Vector3(dir.x, 0, dir.z).normalize();
+      if (move.f) player.position.addScaledVector(pForward, speed);
+      if (move.b) player.position.addScaledVector(pForward, -speed);
+      if (move.l) player.position.addScaledVector(right, -speed);
+      if (move.r) player.position.addScaledVector(right, speed);
+      
+      // Camera follows player
+      camera.position.set(player.position.x, player.position.y + 5, player.position.z + 10);
+    }
+
+    // Tool logic
+    if (selectedPartId && !isTestingMode) {
+      const activeMesh = partsArray.find(m => m.userData.id === selectedPartId);
+      if (activeMesh) {
+        if (activeTool === 'drag') {
+          if (move.f) activeMesh.position.z -= 0.15;
+          if (move.b) activeMesh.position.z += 0.15;
+          if (move.l) activeMesh.position.x -= 0.15;
+          if (move.r) activeMesh.position.x += 0.15;
+        } else if (activeTool === 'rotate') {
+          activeMesh.rotation.y += 0.03;
+        }
+      }
+    }
+
+    // Gravity logic
+    if (isTestingMode) {
+      partsArray.forEach(p => {
+        if (!p.userData.anchored) {
+          if (p.position.y > 1.5) p.position.y -= 0.2; 
+          else p.position.y = 1.5; 
+        }
+      });
+    }
+
+    camera.rotation.order = 'YXZ';
+    camera.rotation.set(pitch, yaw, 0);
+    renderer.render(scene, camera);
+  }
+
+  resizeCanvas();
+  animate();
+
+  function switchTab(tabId) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.getElementById(`tab-${tabId}`).classList.add('active');
+    document.getElementById(`content-${tabId}`).classList.add('active');
+  }
+</script>
+</body>
+</html>

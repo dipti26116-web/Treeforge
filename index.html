@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-select=none">
+  <title>Treeforge - Create. Share. Plant Trees.</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #0a0a1f 0%, #1a0033 100%);
+      color: #eee; min-height: 100vh; overflow-x: hidden;
+    }
+    
+    /* --- MAIN NAVIGATION HEADER --- */
+    #main-header {
+      position: fixed; top: 0; width: 100%;
+      background: rgba(10, 10, 31, 0.97); backdrop-filter: blur(12px);
+      padding: 18px 40px; display: flex; justify-content: space-between;
+      align-items: center; z-index: 100; border-bottom: 1px solid #ff550044;
+    }
+    .logo { font-size: 30px; font-weight: bold; color: #ff8800; cursor: pointer; }
+    .nav-buttons button {
+      padding: 10px 20px; margin-left: 10px; border-radius: 8px;
+      font-weight: bold; cursor: pointer; background: #1f1f2f;
+      color: white; border: 1px solid #445; transition: 0.2s;
+    }
+    .nav-buttons button:hover { background: #334; border-color: #ff8800; }
+    .btn-studio { border-color: #ff8800; color: #ff8800 !important; }
+    .btn-login { background: #ff8800 !important; color: white !important; border: none !important; }
+
+    /* --- STANDARD VIEWS CONTAINER --- */
+    .view-section { display: none; padding-top: 100px; padding-bottom: 60px; max-width: 1200px; margin: 0 auto; }
+    #home-view { display: block; max-width: 100%; padding-top: 0; }
+
+    /* --- HOME SCREEN --- */
+    .hero { padding-top: 140px; text-align: center; padding-bottom: 80px; }
+    .hero h1 { font-size: 54px; margin: 20px 0 16px; background: linear-gradient(90deg, #ffcc00, #ff5500); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .hero p { font-size: 23px; max-width: 720px; margin: 0 auto; opacity: 0.9; }
+    .section { padding: 80px; display: flex; align-items: center; gap: 80px; max-width: 1400px; margin: 0 auto; }
+    .create-section { background: rgba(255, 90, 0, 0.09); }
+    .feature-box { flex: 1; }
+    .feature-img { flex: 1; height: 380px; background-size: cover; background-position: center; border-radius: 24px; box-shadow: 0 25px 50px rgba(0,0,0,0.7); position: relative; }
+    .overlay-text { position: absolute; bottom: 30px; left: 30px; font-size: 28px; font-weight: bold; text-shadow: 0 3px 10px black; }
+    .btn-large { background: #ff8800; color: white; border: none; padding: 16px 32px; font-size: 18px; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 20px; }
+    .btn-large:hover { background: #ffaa00; }
+
+    /* --- STORE VIEW --- */
+    .store-header { text-align: center; margin-bottom: 50px; }
+    .store-header h1 { font-size: 48px; margin: 0 0 10px 0; background: linear-gradient(90deg, #ffcc00, #ff5500); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .tree-counter { display: inline-block; background: rgba(0, 255, 100, 0.1); border: 2px solid #00cc66; color: #00ff88; padding: 10px 20px; border-radius: 50px; font-size: 20px; font-weight: bold; margin-top: 15px; }
+    .game-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; margin-bottom: 60px; }
+    .game-card { background: rgba(25, 25, 45, 0.8); border: 1px solid #334; border-radius: 16px; padding: 20px; transition: 0.3s; cursor: pointer; text-align: center; }
+    .game-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(255, 136, 0, 0.2); border-color: #ff8800; }
+    .game-img { width: 100%; height: 160px; background-color: #111; border-radius: 10px; margin-bottom: 15px; background-size: cover; background-position: center; }
+    .game-title { font-size: 24px; font-weight: bold; margin: 0 0 5px 0; }
+    .game-creator { font-size: 14px; color: #aaa; margin: 0 0 15px 0; }
+    .game-stats { display: flex; justify-content: space-around; font-size: 14px; color: #ddd; }
+
+    /* --- PLAY PAGE (Treeforge.com/download) --- */
+    .play-header { text-align: center; padding: 40px; background: #111122; border: 1px solid #334; border-radius: 16px; margin-bottom: 40px; }
+    .play-hero-img { width: 100%; height: 300px; background-color: #000; border-radius: 12px; margin-bottom: 20px; background-size: cover; background-position: center; }
+    .btn-play-game { background: linear-gradient(90deg, #00cc66, #009944); color: white; border: none; padding: 18px 40px; font-size: 22px; font-weight: bold; border-radius: 12px; cursor: pointer; margin-top: 20px; width: 100%; }
+
+    /* --- SETTINGS & DASHBOARD --- */
+    .dashboard { background: #111122; border: 2px solid #334; border-radius: 16px; padding: 30px; display: flex; flex-wrap: wrap; gap: 40px; }
+    .dash-section { flex: 1; min-width: 300px; }
+    .dash-section h2 { margin-top: 0; color: #ffaa00; border-bottom: 1px solid #334; padding-bottom: 10px; }
+    .forest-display { font-size: 40px; background: #0a0a15; padding: 20px; border-radius: 12px; border: 1px solid #223; margin-top: 15px; text-align: center; }
+    .setting-row { display: flex; align-items: center; justify-content: space-between; background: #1a1a2e; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #223; }
+    .setting-input, .setting-select { background: #0a0a1f; color: #00ff88; border: 1px solid #445; padding: 8px 12px; border-radius: 6px; font-size: 16px; font-weight: bold; width: 140px; text-align: center; }
+    
+    .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #445; transition: .4s; border-radius: 34px; }
+    .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+    input:checked + .slider { background-color: #00cc66; }
+    input:checked + .slider:before { transform: translateX(24px); }
+
+    .lock-overlay { position: absolute; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; border-radius: 8px; font-weight: bold; color: #ff5500; font-size: 18px; z-index: 10; display: none; }
+
+    /* --- TOAST NOTIFICATION --- */
+    #toast { visibility: hidden; min-width: 250px; background-color: #00cc66; color: #fff; text-align: center; border-radius: 8px; padding: 16px; position: fixed; z-index: 1000; left: 50%; bottom: 30px; transform: translateX(-50%); font-size: 18px; font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+    #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
+    @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
+    @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+
+    /* ================= STUDIO 3D ENGINE CSS ================= */
+    #studio-view { display: none; flex-direction: column; height: 100vh; width: 100vw; background: #111; user-select: none; }
+    #studio-topbar { background: #1f1f2f; padding: 10px; display: flex; flex-direction: column; border-bottom: 2px solid #334; height: 90px; }
+    .ribbon-meta { display: flex; justify-content: space-between; font-size: 14px; opacity: 0.9; }
+    .ribbon-tools { display: flex; gap: 8px; margin-top: 8px; overflow-x: auto; padding-bottom: 5px; }
+    .tool-btn { background: #2a2a3a; color: white; border: 1px solid #445; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; white-space: nowrap; }
+    .tool-btn:hover { background: #3a3a52; border-color: #f80; }
+    .tool-btn.active { background: #f80; border-color: #fa0; }
+    .tool-btn.danger { background: #522; }
+    
+    .studio-container { display: flex; flex: 1; position: relative; }
+    .panel { background: #1a1a26; border-right: 1px solid #2d2d3d; display: flex; flex-direction: column; z-index: 2; }
+    #explorer-panel { width: 220px; padding: 10px; }
+    
+    #viewport { background: #000; position: relative; flex: 1; height: 100%; }
+    #canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: block; }
+    
+    #right-panel { width: 320px; display: flex; flex-direction: column; background: #161622; border-left: 1px solid #2d2d3d; z-index: 2; }
+    .panel-tabs { display: flex; background: #1f1f2f; }
+    .tab { flex: 1; padding: 10px; text-align: center; cursor: pointer; background: #1a1a26; font-size: 13px; opacity: 0.7; }
+    .tab.active { opacity: 1; background: #161622; font-weight: bold; border-bottom: 2px solid #f80; }
+    .tab-content { flex: 1; padding: 15px; overflow-y: auto; display: none; }
+    .tab-content.active { display: block; }
+    
+    .color-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .color-swatch { height: 35px; border-radius: 6px; cursor: pointer; border: 2px solid transparent; }
+    .color-swatch.selected { border-color: white; }
+    
+    #code { width: 100%; height: 250px; background: #111; color: #0f0; border: 1px solid #334; font-family: monospace; padding: 10px; resize: none; }
+    .explorer-list { list-style: none; padding-left: 5px; margin: 10px 0; }
+    .explorer-item { padding: 8px; border-radius: 4px; cursor: pointer; font-size: 13px; margin-bottom: 4px; background: rgba(255,255,255,0.05); }
+    .explorer-item.selected { background: rgba(255,136,0,0.2); color: #f80; }
+  </style>
+  <script src="touchscreen.js"></script>
+</head>
+<body>
+
+<header id="main-header">
+  <div class="logo" onclick="switchView('home-view')">🌳 Treeforge</div>
+  <div class="nav-buttons">
+    <button onclick="switchView('home-view')">Home</button>
+    <button onclick="switchView('store-view')">ForgeDownloads</button>
+    <button onclick="switchView('settings-view')">⚙️ Settings</button>
+    <button class="btn-studio" onclick="switchView('studio-view')">Open Studio</button>
+    <button id="auth-btn" class="btn-login" onclick="toggleSignIn()">Sign In</button>
+  </div>
+</header>
+
+<div id="home-view" class="view-section">
+  <div class="hero">
+    <h1>Create Games.<br>Plant Trees.<br>Change the World.</h1>
+    <p>The ultimate platform where creativity meets real-world impact.</p>
+  </div>
+  <div class="section create-section">
+    <div class="feature-box">
+      <h2 style="font-size:42px; margin-bottom:20px;">Create Your Own Game</h2>
+      <p style="font-size:21px; line-height:1.6;">Use the 3D workspace and Lua scripts to build experiences.</p>
+      <button class="btn-large" onclick="switchView('studio-view')">Launch Studio Editor</button>
+    </div>
+    <div class="feature-img" style="background-image: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.7)), url('https://picsum.photos/id/201/800/600');">
+      <div class="overlay-text">3D Code Editor</div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="feature-img" style="background-image: linear-gradient(to right, rgba(0,0,0,0.15), rgba(0,0,0,0.9)), url('https://picsum.photos/id/1015/900/600');">
+      <div class="overlay-text">ForgeDownloads</div>
+    </div>
+    <div class="feature-box">
+      <h2 style="font-size:42px; margin-bottom:20px;">Download Games</h2>
+      <p style="font-size:21px; line-height:1.6;">Discover amazing games made by the community.<br>Every download plants one real tree.</p>
+      <button class="btn-large" onclick="switchView('store-view')">Open ForgeDownloads</button>
+    </div>
+  </div>
+</div>
+
+<div id="store-view" class="view-section">
+  <div class="store-header">
+    <h1>ForgeDownloads</h1>
+    <p style="font-size: 20px; color: #ccc;">Select a game to enter their page.</p>
+    <div class="tree-counter">🌳 Global Trees: <span id="global-trees">14,582</span></div>
+  </div>
+
+  <div class="game-grid">
+    <div class="game-card" onclick="openPlayPage('Time Machine Escape', 'OrangeDev', 'https://picsum.photos/id/175/800/400')">
+      <div class="game-img" style="background-image: url('https://picsum.photos/id/175/400/200');"></div>
+      <h3 class="game-title">Time Machine Escape</h3>
+      <p class="game-creator">By OrangeDev</p>
+      <div class="game-stats"><span>⭐ 4.9</span><span>🌳 5,420 Trees</span></div>
+    </div>
+    <div class="game-card" onclick="openPlayPage('World Map Explorer', 'Yathu_Builds', 'https://picsum.photos/id/28/800/400')">
+      <div class="game-img" style="background-image: url('https://picsum.photos/id/28/400/200');"></div>
+      <h3 class="game-title">World Map Explorer</h3>
+      <p class="game-creator">By Yathu_Builds</p>
+      <div class="game-stats"><span>⭐ 4.8</span><span>🌳 2,105 Trees</span></div>
+    </div>
+    <div class="game-card" onclick="openPlayPage('Texas Math Quest', 'Shivansh_Genius', 'https://picsum.photos/id/192/800/400')">
+      <div class="game-img" style="background-image: url('https://picsum.photos/id/192/400/200');"></div>
+      <h3 class="game-title">Texas Math Quest</h3>
+      <p class="game-creator">By Shivansh_Genius</p>
+      <div class="game-stats"><span>⭐ 5.0</span><span>🌳 7,057 Trees</span></div>
+    </div>
+  </div>
+</div>
+
+<div id="play-view" class="view-section">
+  <div style="color:#aaa; cursor:pointer; margin-bottom: 20px;" onclick="switchView('store-view')">← Back to Store</div>
+  <div class="play-header">
+    <div id="play-img" class="play-hero-img"></div>
+    <h1 id="play-title" style="font-size: 42px; margin:0 0 10px 0;">Game Title</h1>
+    <p id="play-creator" style="font-size: 18px; color: #aaa; margin:0;">By Creator</p>
+    <button class="btn-play-game" onclick="playOtherGame()">▶ ENTER GAME (+1 Tree to Creator)</button>
+  </div>
+</div>
+
+<div id="settings-view" class="view-section">
+  <div class="store-header"><h1>Your Dashboard & Settings</h1></div>
+  <div class="dashboard">
+    <div class="dash-section">
+      <h2>🌲 Your Forest Progress</h2>
+      <p>Trees earned when players enter YOUR games!</p>
+      <div style="font-size: 24px; font-weight: bold; color: #00ff88;">Your Trees: <span id="my-trees">19,998</span></div>
+      <div class="forest-display" id="forest-visual">🌲🌲🌲🌳🌲🌳🌲🌳</div>
+      <button style="width:100%; background:#445; color:white; border:none; padding:10px; margin-top:20px; border-radius:8px; cursor:pointer;" onclick="simulatePlayerJoiningMyGame()">🛠️ Simulate 1 Player Joining Your Game</button>
+    </div>
+    <div class="dash-section" style="position: relative;">
+      <div id="login-lock" class="lock-overlay">🔒 Please Sign In to use Auto-Publish</div>
+      <h2>⚙️ Engine Settings</h2>
+      <div class="setting-row">
+        <div><strong>Publish Notification Target</strong><br><span style="font-size:12px; color:#aaa;">Amount of trees needed to publish</span></div>
+        <input type="number" id="publish-amount" class="setting-input" value="20000" onchange="checkPublishLimit()">
+      </div>
+      <div class="setting-row">
+        <div><strong>Enable Auto-Publish</strong><br><span style="font-size:12px; color:#aaa;">Uploads directly to Play/Microsoft Store</span></div>
+        <label class="switch"><input type="checkbox" id="auto-publish-toggle" checked onchange="checkPublishLimit()"><span class="slider"></span></label>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast">🌳 1 Tree Planted!</div>
+
+<div id="studio-view">
+  <div id="studio-topbar">
+    <div class="ribbon-meta">
+      <div>🌳 <strong>Treeforge Studio</strong></div>
+      <div><button class="tool-btn" onclick="switchView('home-view')">Exit Studio</button></div>
+    </div>
+    <div class="ribbon-tools">
+      <button class="tool-btn active" id="tool-select" onclick="setTool('select')">🖐️ Select</button>
+      <button class="tool-btn" id="tool-drag" onclick="setTool('drag')">🎯 Drag</button>
+      <button class="tool-btn" id="tool-rotate" onclick="setTool('rotate')">🔄 Rotate</button>
+      <button class="tool-btn" id="tool-anchor" onclick="toggleAnchor()">⚓ Anchor: ON</button>
+      <button class="tool-btn" style="background:#242;" onclick="spawnPart()">➕ Add Part</button>
+      <button class="tool-btn danger" onclick="deleteSelected()">🗑️ Del</button>
+      <button class="tool-btn" id="btn-play" style="background:#063; margin-left:auto;" onclick="togglePlayTest()">▶ Play Test</button>
+    </div>
+  </div>
+
+  <div class="studio-container">
+    <div class="panel" id="explorer-panel">
+      <h4 style="margin:0 0 10px 0; border-bottom:1px solid #445; padding-bottom:5px;">Explorer</h4>
+      <div class="explorer-item" style="font-weight:bold;">📁 Workspace</div>
+      <ul class="explorer-list" id="explorer-tree"></ul>
+    </div>
+
+    <div id="viewport">
+      <canvas id="canvas"></canvas>
+    </div>
+
+    <div id="right-panel">
+      <div class="panel-tabs">
+        <div class="tab active" id="tab-properties" onclick="switchStudioTab('properties')">🎨 Paint</div>
+        <div class="tab" id="tab-lua" onclick="switchStudioTab('lua')">📜 Script</div>
+      </div>
+      <div class="tab-content active" id="content-properties">
+        <h4 style="margin-top:0;">Color Palette</h4>
+        <div class="color-grid">
+          <div class="color-swatch" style="background:#ff3333;" onclick="paintPart('#ff3333')"></div>
+          <div class="color-swatch" style="background:#33ff33;" onclick="paintPart('#33ff33')"></div>
+          <div class="color-swatch" style="background:#3333ff;" onclick="paintPart('#3333ff')"></div>
+          <div class="color-swatch" style="background:#ffff33;" onclick="paintPart('#ffff33')"></div>
+          <div class="color-swatch" style="background:#ff8800;" onclick="paintPart('#ff8800')"></div>
+          <div class="color-swatch" style="background:#ffffff;" onclick="paintPart('#ffffff')"></div>
+          <div class="color-swatch" style="background:#555555;" onclick="paintPart('#555555')"></div>
+          <div class="color-swatch" style="background:#8b5a2b;" onclick="paintPart('#8b5a2b')"></div>
+        </div>
+      </div>
+      <div class="tab-content" id="content-lua">
+        <h4 style="margin-top:0;">Editor.lua</h4>
+        <textarea id="code">
+let target = Game.Workspace.getPart("Part_1");
+if (target) {
+  target.setColor("#ff0000");
+  target.setPosition(0, 15, 0);
+  target.setAnchor(true);
+  alert("Part_1 Hacked!");
+} else {
+  alert("Spawn Part_1 first!");
+}</textarea>
+        <button class="tool-btn" style="width:100%; margin-top:10px; justify-content:center;" onclick="executeLuaConfig()">Run Script</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+<script>
+  // --- 1. SITE NAVIGATION & LOGIC ---
+  let isSignedIn = false;
+  let globalTrees = 14582;
+  let myTrees = 19998;
+
+  function switchView(viewId) {
+    // Hide all normal sections
+    document.querySelectorAll('.view-section').forEach(el => el.style.display = 'none');
+    
+    // Check if we are opening the studio
+    if (viewId === 'studio-view') {
+      document.getElementById('main-header').style.display = 'none'; // Hide main nav
+      document.getElementById('studio-view').style.display = 'flex'; // Show studio
+      setTimeout(resizeCanvas, 50); // Fix 3D canvas size after opening
+    } else {
+      document.getElementById('main-header').style.display = 'flex'; // Show main nav
+      document.getElementById('studio-view').style.display = 'none'; // Hide studio
+      document.getElementById(viewId).style.display = 'block';
+      window.scrollTo(0,0);
+    }
+  }
+
+  function toggleSignIn() {
+    isSignedIn = !isSignedIn;
+    const authBtn = document.getElementById('auth-btn');
+    const lock = document.getElementById('login-lock');
+    if (isSignedIn) {
+      authBtn.innerText = "Sign Out"; authBtn.style.background = "#334";
+      lock.style.display = "none"; showToast("Signed In Successfully!");
+    } else {
+      authBtn.innerText = "Sign In"; authBtn.style.background = "#ff8800";
+      lock.style.display = "flex"; showToast("Signed Out.");
+      document.getElementById('auto-publish-toggle').checked = false;
+    }
+  }
+
+  function openPlayPage(title, creator, imgUrl) {
+    document.getElementById('play-title').innerText = title;
+    document.getElementById('play-creator').innerText = "By " + creator;
+    document.getElementById('play-img').style.backgroundImage = `url('${imgUrl}')`;
+    switchView('play-view');
+  }
+
+  function playOtherGame() {
+    globalTrees++;
+    document.getElementById('global-trees').innerText = globalTrees.toLocaleString();
+    showToast("▶ Game Started! Creator earned 1 Tree! 🌳");
+  }
+
+  function simulatePlayerJoiningMyGame() {
+    myTrees++;
+    document.getElementById('my-trees').innerText = myTrees.toLocaleString();
+    document.getElementById('forest-visual').innerText += "🌲";
+    showToast("Someone played your game! +1 Tree! 🌳");
+    checkPublishLimit();
+  }
+
+  function checkPublishLimit() {
+    const amountNeeded = parseInt(document.getElementById('publish-amount').value);
+    const autoPublishOn = document.getElementById('auto-publish-toggle').checked;
+    if (myTrees >= amountNeeded) {
+      setTimeout(() => {
+        if (isSignedIn && autoPublishOn) alert(`🎉 TARGET REACHED: ${amountNeeded} Trees! 🎉\n\nAuto-Publish is ON! Treeforge is uploading to Google Play & Microsoft Store!`);
+        else alert(`🔔 REMINDER: Your game reached ${amountNeeded} Trees!\n\nYou hit your target! Because Auto-Publish is disabled (or you aren't signed in), you need to publish manually!`);
+      }, 500);
+    }
+  }
+
+  function showToast(msg) {
+    const toast = document.getElementById("toast");
+    toast.innerText = msg; toast.className = "show";
+    setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
+  }
+
+  document.getElementById('login-lock').style.display = "flex";
+  document.getElementById('auto-publish-toggle').checked = false;
+
+  // --- 2. THREE.JS STUDIO ENGINE ---
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0xaaccff, 0.015);
+  const viewportDiv = document.getElementById('viewport');
+  const camera = new THREE.PerspectiveCamera(70, 1, 0.1, 1000);
+  const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas'), antialias: true });
+
+  function resizeCanvas() {
+    if(document.getElementById('studio-view').style.display !== 'flex') return;
+    const w = viewportDiv.clientWidth; const h = viewportDiv.clientHeight;
+    camera.aspect = w / h; camera.updateProjectionMatrix(); renderer.setSize(w, h);
+  }
+  window.addEventListener('resize', resizeCanvas);
+
+  const vShader = `varying vec3 vWorldPosition; void main() { vec4 wp = modelMatrix * vec4(position, 1.0); vWorldPosition = wp.xyz; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
+  const fShader = `varying vec3 vWorldPosition; void main() { float h = normalize(vWorldPosition + vec3(0.0, 200.0, 0.0)).y; gl_FragColor = vec4(mix(vec3(0.6, 0.8, 1.0), vec3(0.2, 0.4, 0.8), max(0.0, h)), 1.0); }`;
+  scene.add(new THREE.Mesh(new THREE.SphereGeometry(400, 32, 15), new THREE.ShaderMaterial({ vertexShader: vShader, fragmentShader: fShader, side: THREE.BackSide })));
+  
+  scene.add(new THREE.AmbientLight(0x777777));
+  const dirLight = new THREE.DirectionalLight(0xffffff, 1.2); dirLight.position.set(30, 60, 20); scene.add(dirLight);
+  
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), new THREE.MeshPhongMaterial({ color: 0x3d663d }));
+  floor.rotation.x = -Math.PI / 2; scene.add(floor);
+  
+  const spawnPad = new THREE.Mesh(new THREE.BoxGeometry(6, 1, 6), new THREE.MeshPhongMaterial({ color: 0xff6600 }));
+  spawnPad.position.set(0, 0.5, 0); scene.add(spawnPad);
+
+  const player = new THREE.Group();
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 2), new THREE.MeshPhongMaterial({color: 0x5a3d28})); trunk.position.y = 1;
+  const leaves = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 16), new THREE.MeshPhongMaterial({color: 0x228b22})); leaves.position.y = 2.5;
+  player.add(trunk, leaves); scene.add(player); player.visible = false; 
+
+  camera.position.set(0, 8, 15);
+
+  let activeTool = 'select', isAnchoredDefault = true, selectedPartId = null, partCount = 0, isTestingMode = false;
+  const partsArray = [];
+  let yaw = 0, pitch = 0, isLocked = false;
+  const move = { f: false, b: false, l: false, r: false, up: false, down: false };
+  const speed = 0.4;
+
+  function spawnPart() {
+    partCount++; const id = `Part_${partCount}`;
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(3, 3, 3), new THREE.MeshPhongMaterial({ color: 0xdddddd }));
+    mesh.position.set((Math.random() - 0.5) * 15, 10, (Math.random() - 0.5) * 15);
+    mesh.userData = { id: id, anchored: isAnchoredDefault, startY: 10 };
+    scene.add(mesh); partsArray.push(mesh);
+    document.getElementById('explorer-tree').innerHTML += `<li class="explorer-item" id="exp-${id}" onclick="selectPart('${id}')">📦 ${id}</li>`;
+    selectPart(id);
+  }
+
+  function selectPart(id) {
+    selectedPartId = id; document.querySelectorAll('.explorer-item').forEach(el => el.classList.remove('selected'));
+    const item = document.getElementById(`exp-${id}`); if (item) item.classList.add('selected');
+  }
+
+  function setTool(tool) {
+    activeTool = tool; document.querySelectorAll('.tool-btn').forEach(b => { if(b.id && b.id.startsWith('tool-')) b.classList.remove('active'); });
+    document.getElementById(`tool-${tool}`).classList.add('active');
+  }
+
+  function toggleAnchor() {
+    isAnchoredDefault = !isAnchoredDefault; document.getElementById('tool-anchor').innerText = `⚓ Anchor: ${isAnchoredDefault ? 'ON' : 'OFF'}`;
+    if (selectedPartId) { const p = partsArray.find(m => m.userData.id === selectedPartId); if (p) p.userData.anchored = isAnchoredDefault; }
+  }
+
+  function paintPart(hex) {
+    if (!selectedPartId) return; const target = partsArray.find(m => m.userData.id === selectedPartId);
+    if (target) target.material.color.set(hex);
+  }
+
+  function deleteSelected() {
+    if (!selectedPartId) return; const idx = partsArray.findIndex(m => m.userData.id === selectedPartId);
+    if (idx !== -1) { scene.remove(partsArray[idx]); partsArray.splice(idx, 1); document.getElementById(`exp-${selectedPartId}`).remove(); selectedPartId = null; }
+  }
+
+  function togglePlayTest() {
+    isTestingMode = !isTestingMode; const btn = document.getElementById('btn-play');
+    if (isTestingMode) {
+      btn.innerText = "⏹ Stop Test"; btn.style.background = "#900";
+      player.position.set(0, 1, 0); player.visible = true; camera.position.set(0, 6, 12); yaw = 0; pitch = -0.2;
+    } else {
+      btn.innerText = "▶ Play Test"; btn.style.background = "#063"; player.visible = false;
+      partsArray.forEach(p => { if (!p.userData.anchored) p.position.y = p.userData.startY; });
+      camera.position.set(0, 8, 15); yaw = 0; pitch = 0;
+    }
+  }
+
+  function executeLuaConfig() {
+    const scriptText = document.getElementById('code').value;
+    const Game = { Workspace: { getPart: function(id) { const mesh = partsArray.find(m => m.userData.id === id); if (!mesh) return null;
+          return { setColor: function(hex) { mesh.material.color.set(hex); }, setPosition: function(x, y, z) { mesh.position.set(x, y, z); }, setAnchor: function(isAnch) { mesh.userData.anchored = isAnch; }, moveUp: function(amt) { mesh.position.y += amt; } };
+    }}};
+    try { eval(scriptText); } catch (e) { alert("Script Error: " + e.message); }
+  }
+
+  function switchStudioTab(tabId) {
+    document.querySelectorAll('#studio-view .tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('#studio-view .tab-content').forEach(c => c.classList.remove('active'));
+    document.getElementById(`tab-${tabId}`).classList.add('active'); document.getElementById(`content-${tabId}`).classList.add('active');
+  }
+
+  // --- STUDIO INPUTS ---
+  document.addEventListener('keydown', e => {
+    if(document.getElementById('studio-view').style.display !== 'flex') return;
+    switch(e.key.toLowerCase()) { case 'w': move.f = true; break; case 's': move.b = true; break; case 'a': move.l = true; break; case 'd': move.r = true; break; case 'e': move.up = true; break; case 'q': move.down = true; break; }
+  });
+  document.addEventListener('keyup', e => {
+    if(document.getElementById('studio-view').style.display !== 'flex') return;
+    switch(e.key.toLowerCase()) { case 'w': move.f = false; break; case 's': move.b = false; break; case 'a': move.l = false; break; case 'd': move.r = false; break; case 'e': move.up = false; break; case 'q': move.down = false; break; }
+  });
+  viewportDiv.addEventListener('mousedown', e => { if (e.button === 2) viewportDiv.requestPointerLock(); });
+  document.addEventListener('mouseup', e => { if (e.button === 2 && document.pointerLockElement === viewportDiv) document.exitPointerLock(); });
+  document.addEventListener('pointerlockchange', () => { isLocked = document.pointerLockElement === viewportDiv; });
+  document.addEventListener('mousemove', e => {
+    if (!isLocked) return; yaw -= e.movementX * 0.003; pitch -= e.movementY * 0.003; pitch = Math.max(-1.5, Math.min(1.5, pitch));
+  });
+  viewportDiv.addEventListener('contextmenu', e => e.preventDefault());
+
+  function animate() {
+    
+    requestAnimationFrame(animate);
+    if(document.getElementById('studio-view').style.display !== 'flex') return;
+
+    const dir = new THREE.Vector3(); camera.getWorldDirection(dir);
+    const right = new THREE.Vector3().crossVectors(dir, camera.up).normalize();
+
+    if (!isTestingMode) {
+      if (move.f) camera.position.addScaledVector(dir, speed);
+      if (move.b) camera.position.addScaledVector(dir, -speed);
+      if (move.l) camera.position.addScaledVector(right, -speed);
+      if (move.r) camera.position.addScaledVector(right, speed);
+      if (move.up) camera.position.y += speed;
+      if (move.down) camera.position.y -= speed;
+      if (camera.position.y < 0.8) camera.position.y = 0.8; 
+    } else {
+      const pForward = new THREE.Vector3(dir.x, 0, dir.z).normalize();
+      if (move.f) player.position.addScaledVector(pForward, speed);
+      if (move.b) player.position.addScaledVector(pForward, -speed);
+      if (move.l) player.position.addScaledVector(right, -speed);
+      if (move.r) player.position.addScaledVector(right, speed);
+      camera.position.set(player.position.x, player.position.y + 5, player.position.z + 10);
+    }
+
+    if (selectedPartId && !isTestingMode) {
+      const activeMesh = partsArray.find(m => m.userData.id === selectedPartId);
+      if (activeMesh) {
+        if (activeTool === 'drag') {
+          if (move.f) activeMesh.position.z -= 0.15; if (move.b) activeMesh.position.z += 0.15;
+          if (move.l) activeMesh.position.x -= 0.15; if (move.r) activeMesh.position.x += 0.15;
+        } else if (activeTool === 'rotate') { activeMesh.rotation.y += 0.03; }
+      }
+    }
+
+    if (isTestingMode) {
+      partsArray.forEach(p => {
+        if (!p.userData.anchored) { if (p.position.y > 1.5) p.position.y -= 0.2; else p.position.y = 1.5; }
+      });
+    }
+
+    camera.rotation.order = 'YXZ'; camera.rotation.set(pitch, yaw, 0); renderer.render(scene, camera);
+  }
+  animate();
+</script>
+
+</body>
+</html>
