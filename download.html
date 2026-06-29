@@ -6,6 +6,8 @@
   <title>ForgeDownloads - Treeforge</title>
   <style>
     * { box-sizing: border-box; }
+    .server-card { background: rgba(25,25,45,0.8); border:1px solid #334; border-radius: 14px; padding: 16px; margin-top: 12px; }
+    .server-pill { display:inline-block; padding: 6px 10px; border-radius: 999px; background: rgba(0,255,100,0.12); color: #84ffb0; margin-top: 10px; }
     body {
       margin: 0;
       font-family: 'Segoe UI', Arial, sans-serif;
@@ -303,14 +305,57 @@
 
 <div id="toast">🌳 1 Tree Planted! Game downloading...</div>
 
+<script src="app-utils.js"></script>
 <script>
+  const app = window.TreeforgeApp;
   let globalTrees = 14582;
-  let myTrees = 19998; // So close to the 20k publish limit!
+  let myTrees = 19998;
+  const savedCounters = app.getCounters();
+  if (savedCounters) {
+    globalTrees = savedCounters.globalTrees || globalTrees;
+    myTrees = savedCounters.myTrees || myTrees;
+  }
 
+  function renderPublishedGames() {
+    const container = document.getElementById('game-grid');
+    const games = app.getPublishedGames();
+    if (!container) return;
+    if (!games.length) {
+      container.innerHTML = '<div class="game-card"><h3 class="game-title">No published games yet</h3><p class="game-creator">Publish from the studio to make your game show up here.</p></div>';
+      return;
+    }
+    container.innerHTML = games.map((game) => `
+      <div class="game-card">
+        <div class="game-img" style="background-image: url('${game.image || 'https://picsum.photos/id/42/400/200'}');"></div>
+        <h3 class="game-title">${game.title}</h3>
+        <p class="game-creator">By ${game.creator || 'Guest Creator'}</p>
+        <div class="game-stats"><span>⭐ 5.0</span><span>🌳 ${game.trees || 1} Trees</span></div>
+        <button class="download-btn" onclick="downloadGame('${game.title}')">📥 Play & Plant 1 Tree</button>
+      </div>
+    `).join('');
+  }
+
+  function renderServers() {
+    const serversList = document.getElementById('servers-list');
+    const servers = app.getServers();
+    if (!serversList) return;
+    if (!servers.length) {
+      serversList.innerHTML = '<div class="server-card"><strong>No live servers yet</strong><p>Publishing a game creates a server entry for players.</p></div>';
+      return;
+    }
+    serversList.innerHTML = servers.map((server) => `
+      <div class="server-card">
+        <strong>${server.name}</strong>
+        <p>${server.description || 'Live multiplayer server'}</p>
+        <div class="server-pill">Join: ${server.joinCode || 'TREE-001'}</div>
+      </div>
+    `).join('');
+  }
   function downloadGame(gameName) {
     // Increment counters
     globalTrees++;
     myTrees++;
+    app.saveCounters({ globalTrees, myTrees });
     
     document.getElementById('global-trees').innerText = globalTrees.toLocaleString();
     document.getElementById('my-trees').innerText = myTrees.toLocaleString();
@@ -346,6 +391,9 @@
       }, 1000); // Small delay so the user sees the tree count go up first
     }
   }
+
+  renderPublishedGames();
+  renderServers();
 </script>
 
 </body>
